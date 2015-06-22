@@ -6,12 +6,16 @@ import tornado.options
 import tornado.web
 import tornado.autoreload
 from roxy.handlers import *
+from roxy.counter.memory_counter import MemoryCounter
 from tornado.options import define, options
 
 define('port', default=8888, help="run on given port", type=int)
 
 
 class RoxyApplicationServer(tornado.web.Application):
+
+    DGIS_KEY = 'dgis'
+
     def __init__(self):
         handlers = [
             (r"/(.+)", ProxyHandler),
@@ -21,6 +25,10 @@ class RoxyApplicationServer(tornado.web.Application):
             app_name=u"pRoxy Island",
             static_path=os.path.join(os.path.dirname(__file__), "static"),
         )
+
+        self.counter = MemoryCounter()
+        self.counter.add_key('dgis')
+        self.counter.initialization()
 
         tornado.web.Application.__init__(self, handlers, **settings)
         print('Server is started!')
