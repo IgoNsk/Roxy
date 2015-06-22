@@ -5,7 +5,7 @@ import tornado.ioloop
 import tornado.options
 import tornado.web
 import tornado.autoreload
-from handlers import *
+from roxy.handlers import *
 from tornado.options import define, options
 
 define('port', default=8888, help="run on given port", type=int)
