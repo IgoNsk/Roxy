@@ -3,13 +3,9 @@
 import tornado.escape
 import tornado.web
 import tornado.httpclient
-from tornado.httputil import url_concat, _parseparam
+from tornado.httputil import url_concat
 from tornado import gen
-
-try:
-    from urllib import parse_qs  # py2
-except ImportError:
-    from urllib.parse import parse_qs  # py3
+from urllib.parse import parse_qs
 
 
 class ProxyHandler(tornado.web.RequestHandler):
