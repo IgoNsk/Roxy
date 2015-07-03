@@ -13,7 +13,7 @@ class ApiProviderList:
     """Список провайдеров"""
 
     def __init__(self):
-        self.__init__()
+        super().__init__()
         self._providers = dict()
         self._counter_storage = None
 
@@ -45,18 +45,16 @@ class ApiProviderList:
 
     def get_provider_key_by_domain(self, domain):
         """Возвращает объект конкретного ключа провайдера, ассоциированного с указанным поддоменом"""
-        try:
-            (key, provider_name) = self._parse_domain(domain)
-            if provider_name not in self._providers:
-                raise RuntimeError
+        (key_name, provider_name) = self._parse_domain(domain)
+        if provider_name not in self._providers:
+            raise ApiKeyUndefined
 
-            provider = self._providers[provider_name]
-            return provider, provider.get_key(key)
-        except RuntimeError:
-            raise
+        provider = self._providers[provider_name]
+        key = provider.get_key(key_name)
+        return provider, key
 
     def set_counter_storage(self, storage_class):
-        if isinstance(storage_class, AbstractCounter):
+        if not isinstance(storage_class, AbstractCounter):
             raise NotImplementedError
 
         self._counter_storage = storage_class
@@ -65,11 +63,12 @@ class ApiProviderList:
 
     @staticmethod
     def _parse_domain(domain=""):
-        pattern = '(.+)\.(.+)'
-        if not re.match(pattern, domain):
-            raise RuntimeError('Переданый домен неправильного формата')
+        parts = domain.split('.', 3)
 
-        return re.findall(pattern, domain)[0]
+        if len(parts) < 2:
+            raise ApiKeyUndefined('Переданый домен неправильного формата')
+
+        return parts[0], parts[1]
 
 
 class ApiProvider:
@@ -83,9 +82,18 @@ class ApiProvider:
         self._keys = {}
         self._request_processors = {}
 
+        # @TODO(igo) Вынести этот код во внешнюю зависимость
+        self.add_request_processor(GETMethodProcessor(), 'GET')
+
     def add_key(self, name, key):
         self._keys[name] = key
         return self
+
+    def get_key(self, name):
+        if name not in self._keys:
+            raise ApiKeyUndefined
+
+        return self._keys[name]
 
     def add_request_processor(self, handler, method):
         if not isinstance(handler, MethodProcessor):
@@ -142,7 +150,7 @@ class GETMethodProcessor(MethodProcessor):
     def make_response(response, provider):
         headers = ((name, val) for name, val in response.headers.items()
                    if name not in GETMethodProcessor.not_accept_headers)
-        return response.body, headers
+        return response.code, response.body, headers
 
     @staticmethod
     def make_request(request, provider):

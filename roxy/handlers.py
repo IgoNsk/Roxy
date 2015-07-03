@@ -13,9 +13,8 @@ class ProxyHandler(tornado.web.RequestHandler):
         providers = self.application.provider_list
 
         # Определение провайдера и ключа по доменному имени
-        domain = self.request.host
         try:
-            # Определяем по доменному имени к какому провайдеру и ключю мы сейчас обращаемся
+            domain = self.request.host
             (provider, key) = providers.get_provider_key_by_domain(domain)
         except ApiKeyUndefined as e:
             raise tornado.web.HTTPError(400, str(e))
@@ -46,7 +45,7 @@ class ProxyHandler(tornado.web.RequestHandler):
         self.clear()
         self.set_status(status_code)
 
-        for (name, val) in headers.items():
+        for (name, val) in headers:
             self.set_header(name, val)
 
         self.write(body)
