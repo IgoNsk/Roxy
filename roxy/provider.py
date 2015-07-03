@@ -1,6 +1,13 @@
 import re
-import roxy.counter.interface as counter_interface
+from roxy.counter.interface import AbstractCounter
 
+class ApiKeyRequestExceed(BaseException):
+    def __init__(self, count, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.count = count
+
+class ApiKeyUndefined(BaseException):
+    pass
 
 class ApiProviderList:
     """Список провайдеров"""
@@ -21,7 +28,7 @@ class ApiProviderList:
                                    name=provider_item['name'],
                                    protocol=provider_item['protocol'])
 
-            for (key_name, key_value) in provider_item.keys.items():
+            for (key_name, key_value) in provider_item['keys'].items():
                 provider.add_key(
                     key_name,
                     ApiProviderKey(
@@ -39,7 +46,7 @@ class ApiProviderList:
     def get_provider_key_by_domain(self, domain):
         """Возвращает объект конкретного ключа провайдера, ассоциированного с указанным поддоменом"""
         try:
-            (provider_name, key) = self._parse_domain(domain)
+            (key, provider_name) = self._parse_domain(domain)
             if provider_name not in self._providers:
                 raise RuntimeError
 
@@ -49,7 +56,7 @@ class ApiProviderList:
             raise
 
     def set_counter_storage(self, storage_class):
-        if isinstance(storage_class, counter_interface):
+        if isinstance(storage_class, AbstractCounter):
             raise NotImplementedError
 
         self._counter_storage = storage_class
@@ -87,16 +94,17 @@ class ApiProvider:
         self._request_processors[method] = handler
         return self
 
-    def make_response(self, method):
-        return self._request_processors[method].make_response()
+    def make_response(self, method, response):
+        return self._request_processors[method].make_response(response, self)
 
-    def make_request(self, method):
-        return self._request_processors[method].make_request()
+    def make_request(self, method, request):
+        return self._request_processors[method].make_request(request, self)
 
-    def get_exceed_response(self):
+    @staticmethod
+    def get_exceed_response(exception):
         """Метод возвращающий ответ пользователю в случае превышения лимита по обращениям"""
         import tornado.web
-        raise tornado.web.HTTPError(405)
+        return tornado.web.HTTPError(405, str(exception))
 
 
 class ApiProviderKey:
@@ -124,6 +132,7 @@ class MethodProcessor:
     @staticmethod
     def make_request(request, provider):
         pass
+
 
 class GETMethodProcessor(MethodProcessor):
 

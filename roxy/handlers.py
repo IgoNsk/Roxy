@@ -1,61 +1,53 @@
 # coding: UTF-8
 
-import tornado.escape
 import tornado.web
 import tornado.httpclient
-from tornado.httputil import url_concat
 from tornado import gen
-from urllib.parse import parse_qs
-
+from roxy.provider import ApiKeyRequestExceed, ApiKeyUndefined
 
 class ProxyHandler(tornado.web.RequestHandler):
 
-    keys = {
-        'dgis': {
-            'protocol': 'http',
-            'host': 'catalog.api.2gis.ru',
-            'keyParams': {
-                'key': 'ruaenm7219',
-            },
-            'limits': 20,
-        }
-    }
-
     @tornado.gen.coroutine
     def get(self, *args, **kwargs):
-        http = tornado.httpclient.AsyncHTTPClient()
+        """Обработка GET запросов"""
+        providers = self.application.provider_list
 
-        key = 'dgis'
-        provider_config = self.keys[key]
+        # Определение провайдера и ключа по доменному имени
+        domain = self.request.host
+        try:
+            # Определяем по доменному имени к какому провайдеру и ключю мы сейчас обращаемся
+            (provider, key) = providers.get_provider_key_by_domain(domain)
+        except ApiKeyUndefined as e:
+            raise tornado.web.HTTPError(400, str(e))
 
-        request_url = '%s://%s%s' % (provider_config['protocol'], provider_config['host'], self.request.path)
-        get_params = dict((k, v if len(v) > 1 else v[0]) for k, v in parse_qs(self.request.query).items())
-        get_params.update(provider_config['keyParams'])
-
-        request_url = url_concat(request_url, get_params)
-        request_headers = self.request.headers
-        request_headers['Host'] = provider_config['host']
-
+        # Составляем запрос на основании данных переданных пользователем
+        (request_url, request_headers) = provider.make_request('GET', self.request)
         print('GET Request: %s' % (request_url,))
 
-        count_val = self.application.counter.get_count(key)
-        limits_for_key = provider_config['limits']
-        if count_val >= limits_for_key:
-            print('Limit of request fer hour is %s exceed ' % (str(limits_for_key)))
-            raise tornado.web.HTTPError(405)
+        # Делаем попытку увеличить счетчик запросов на +1
+        try:
+            # TODO(igo) Возможно тут нужен неблокирующий вызов, т.к. будет идти обращение к внешнему сервису
+            # хранения данных
+            key.inc()
+        except ApiKeyRequestExceed as e:
+            # В случае если лимит превышен, будет выброшено исключение
+            print('Limit of request fer hour is %s exceed ' % (str(e.count)))
+            raise provider.get_exceed_response(e)
 
-        self.application.counter.increment_by_key(key)
-
+        # Делаем асинхронный неблокирующий запрос к провайдеру, на получение данных
+        http = tornado.httpclient.AsyncHTTPClient()
         response = yield http.fetch(request_url, headers=request_headers)
 
+        # Готовим ответ
+        (status_code, body, headers) = provider.make_response('GET', response)
+        self._render_answer(status_code, body, headers)
+
+    def _render_answer(self, status_code, body, headers):
         self.clear()
-        for header in response.headers:
-            if header not in ['Transfer-Encoding']:
-                self.set_header(header, response.headers[header])
+        self.set_status(status_code)
 
-        if response.body:
-            self.write(response.body)
+        for (name, val) in headers.items():
+            self.set_header(name, val)
 
+        self.write(body)
         self.finish()
-
-        print('Count of request: %s' % (self.application.counter.get_count(key)))
