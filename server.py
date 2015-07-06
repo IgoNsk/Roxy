@@ -26,21 +26,23 @@ keys = {
                 'key': 'ruaenm7219',
             },
         },
+        'limits': {
+            'type': 'interval',
+            'value': ('minute', 20),
+        },
         'keys': {
             'photo': {
                 'name': 'Photo API 2GIS key',
                 'limits': {
-                    'month': 10000,
-                    'hour': 200,
-                    'minute': 10,
+                    'type': 'interval',
+                    'value': ('minute', 20),
                 }
             },
             'embassy': {
                 'name': 'Embassy app 2GIS key',
                 'limits': {
-                    'month': 10000,
-                    'hour': 10,
-                    'minute': 5,
+                    'type': 'interval',
+                    'value': ('minute', 5),
                 }
             },
         },

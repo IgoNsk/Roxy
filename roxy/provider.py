@@ -1,13 +1,17 @@
-import re
+# coding: UTF-8
 from roxy.counter.interface import AbstractCounter
+from roxy.counter.handlers import *
+
 
 class ApiKeyRequestExceed(BaseException):
     def __init__(self, count, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.count = count
 
+
 class ApiKeyUndefined(BaseException):
     pass
+
 
 class ApiProviderList:
     """Список провайдеров"""
@@ -34,8 +38,7 @@ class ApiProviderList:
                     ApiProviderKey(
                         key_value['name'],
                         counter_storage=self._counter_storage,
-                        limit_per_month=key_value['limits']['month'],
-                        limit_per_hour=key_value['limits']['hour']
+                        limits=key_value['limits']
                     )
                 )
 
@@ -118,14 +121,28 @@ class ApiProvider:
 class ApiProviderKey:
     """Ключ для доступа"""
 
-    def __init__(self, name, counter_storage, limit_per_month, limit_per_hour=None):
+    def __init__(self, name, counter_storage, limits=None):
         self.name = name
         self._counter_storage = counter_storage
-        self.limit_per_month = limit_per_month
-        self.limit_per_hour = limit_per_hour
+        (self._limit_value, self._limit_handler) = self.parse_limits(limits)
+
+    @staticmethod
+    def parse_limits(limits):
+        limit_type = limits['type']
+        if limit_type == 'interval':
+            return IntervalCounterHandler(limits['value'][0]), limits['value'][1]
+
+        raise NotImplementedError("Попытка инициации обработчика счетчика неизвестного типа %S" % limit_type)
 
     def get_limits(self):
-        pass
+        value = 0
+        try:
+            key = self._limit_handler.get_cur_key()
+            value = self._counter_storage.get_count(key)
+        except Exception:
+            pass
+
+        return value
 
     def inc(self):
         pass
