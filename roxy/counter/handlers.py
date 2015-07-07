@@ -6,15 +6,20 @@ class IntervalCounterHandler:
 
     PERIODS = {'minute', 'hour', 'day', 'month'}
 
-    def __init__(self, period):
+    def __init__(self, period, prefix=None):
         if period not in self.PERIODS:
             raise NotImplementedError("Неизвестный интервал %" % period)
 
         self.period = period
+        self.prefix = prefix
 
     def get_cur_key(self):
+        parts = []
+        if self.prefix:
+            parts.append(self.prefix)
+
         date = datetime.utcnow()
-        parts = [date.year, date.month]
+        parts.extend([date.year, date.month])
 
         if self.period == 'day':
             parts.extend([date.day])

@@ -38,7 +38,8 @@ class ApiProviderList:
                     ApiProviderKey(
                         key_value['name'],
                         counter_storage=self._counter_storage,
-                        limits=key_value['limits']
+                        limits=key_value['limits'],
+                        key_prefix=provider_key + "-" + key_name
                     )
                 )
 
@@ -121,42 +122,52 @@ class ApiProvider:
 class ApiProviderKey:
     """Ключ для доступа"""
 
-    def __init__(self, name, counter_storage, limits=None):
+    def __init__(self, name, counter_storage, limits=None, key_prefix=None):
         self.name = name
         self._counter_storage = counter_storage
-        (self._limit_value, self._limit_handler) = self.parse_limits(limits)
+        self._limit_handler, self._limit_value = self.parse_limits(limits, key_prefix)
 
     @staticmethod
-    def parse_limits(limits):
+    def parse_limits(limits, prefix=None):
         limit_type = limits['type']
         if limit_type == 'interval':
-            return IntervalCounterHandler(limits['value'][0]), limits['value'][1]
+            handler = IntervalCounterHandler(limits['value']['interval'], prefix)
+            return handler, limits['value']['limit']
 
-        raise NotImplementedError("Попытка инициации обработчика счетчика неизвестного типа %S" % limit_type)
+        raise NotImplementedError("Попытка инициации обработчика счетчика неизвестного типа %s" % limit_type)
 
     def get_limits(self):
         value = 0
         try:
             key = self._limit_handler.get_cur_key()
             value = self._counter_storage.get_count(key)
-        except Exception:
+        except KeyError:
             pass
 
         return value
 
     def inc(self):
-        pass
+        key = self._limit_handler.get_cur_key()
+
+        try:
+            value = self._counter_storage.get_count(key)
+            if value >= self._limit_value:
+                raise ApiKeyRequestExceed(value)
+        except KeyError:
+            self._counter_storage.add_key(key)
+
+        self._counter_storage.increment_by_key(key)
 
 
 class MethodProcessor:
 
     @staticmethod
     def make_response(response, provider):
-        pass
+        raise NotImplementedError()
 
     @staticmethod
     def make_request(request, provider):
-        pass
+        raise NotImplementedError()
 
 
 class GETMethodProcessor(MethodProcessor):

@@ -7,14 +7,13 @@ import tornado.web
 import tornado.autoreload
 from roxy.handlers import *
 from roxy.provider import ApiProviderList
-from roxy.counter.memory_counter import MemoryCounter
+from roxy.counter.redis_counter import RedisCounter
 from tornado.options import define, options
-# from gredis.client import AsyncRedis
+from gredis.client import AsyncRedis
 
 define('port', default=8888, help="run on given port", type=int)
-
-# client = AsyncRedis("localhost", 6379)
-# https://pypi.python.org/pypi/gredis/0.0.7
+define('redis_host', default='photo-all-in-one', help='hostname of redis storage', type=str)
+define('redis_port', default='6379', help='port of redis storage', type=int)
 
 keys = {
     'dgis': {
@@ -26,23 +25,25 @@ keys = {
                 'key': 'ruaenm7219',
             },
         },
-        'limits': {
-            'type': 'interval',
-            'value': ('minute', 20),
-        },
         'keys': {
             'photo': {
                 'name': 'Photo API 2GIS key',
                 'limits': {
                     'type': 'interval',
-                    'value': ('minute', 20),
+                    'value': {
+                        'interval': 'minute',
+                        'limit': 20
+                    },
                 }
             },
             'embassy': {
                 'name': 'Embassy app 2GIS key',
                 'limits': {
                     'type': 'interval',
-                    'value': ('minute', 5),
+                    'value': {
+                        'interval': 'minute',
+                        'limit': 5
+                    },
                 }
             },
         },
@@ -52,7 +53,7 @@ keys = {
 
 class RoxyApplicationServer(tornado.web.Application):
 
-    def __init__(self, providers_config):
+    def __init__(self, providers_config, counter):
         handlers = [
             (r"/(.+)", ProxyHandler),
         ]
@@ -65,7 +66,7 @@ class RoxyApplicationServer(tornado.web.Application):
         # Создаем список провайдеров, устанавливаем для него хранилище ключей и заполняем элементами из
         # переданного в веб сервер конфига словаря с настройками
         self.provider_list = ApiProviderList()
-        self.provider_list.set_counter_storage(MemoryCounter())\
+        self.provider_list.set_counter_storage(counter)\
                           .add_items_from_dict(providers_config)
 
         tornado.web.Application.__init__(self, handlers, **settings)
@@ -74,7 +75,11 @@ class RoxyApplicationServer(tornado.web.Application):
 
 def main():
     tornado.options.parse_command_line()
-    http_server = tornado.httpserver.HTTPServer(RoxyApplicationServer(keys))
+
+    redis_client = AsyncRedis(options.redis_host, options.redis_port)
+    roxy_app = RoxyApplicationServer(keys, RedisCounter(redis_client))
+
+    http_server = tornado.httpserver.HTTPServer(roxy_app)
     http_server.listen(options.port)
     instance = tornado.ioloop.IOLoop.instance()
     tornado.autoreload.start(instance)

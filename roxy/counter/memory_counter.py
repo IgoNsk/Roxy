@@ -11,3 +11,6 @@ class MemoryCounter(AbstractCounter):
 
     def get_count(self, key):
         return self._counters[key]
+
+    def add_key(self, key, init_value=0):
+        self._counters[key] = init_value
