@@ -12,6 +12,7 @@ from roxy.counter.redis_counter import RedisCounter
 from tornado.options import define, options
 from gredis.client import AsyncRedis
 
+define('config', help="config file path", type=str)
 define('port', default=8888, help="run on given port", type=int)
 define('redis_host', default='photo-all-in-one', help='hostname of redis storage', type=str)
 define('redis_port', default='6379', help='port of redis storage', type=int)
@@ -39,13 +40,21 @@ class RoxyApplicationServer(tornado.web.Application):
 
     @staticmethod
     def load_config_from_file(filename):
+        if filename is None:
+            raise BaseException('Не указан кофигурационный файл приложения')
+
         with open(filename, 'r') as stream:
             return yaml.load(stream)
 
 def main():
     tornado.options.parse_command_line()
 
-    config = RoxyApplicationServer.load_config_from_file('config/example.yml')
+    config = {}
+    try:
+        config = RoxyApplicationServer.load_config_from_file(options.config)
+    except BaseException as e:
+        print(str(e))
+        exit(2)
 
     redis_client = AsyncRedis(options.redis_host, options.redis_port)
     roxy_app = RoxyApplicationServer(config, RedisCounter(redis_client))
