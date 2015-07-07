@@ -1,6 +1,7 @@
 import tornado.web
 import tornado.httpclient
 from tornado import gen
+from tornado.log import gen_log
 from roxy.provider import ApiKeyRequestExceed, ApiKeyUndefined
 
 
@@ -20,7 +21,7 @@ class ProxyHandler(tornado.web.RequestHandler):
 
         # Составляем запрос на основании данных переданных пользователем
         (request_url, request_headers) = provider.make_request('GET', self.request)
-        print('GET Request: %s' % (request_url,))
+        gen_log.info('GET Request: %s' % (request_url,))
 
         # Делаем попытку увеличить счетчик запросов на +1
         try:
@@ -29,7 +30,7 @@ class ProxyHandler(tornado.web.RequestHandler):
             key.inc()
         except ApiKeyRequestExceed as e:
             # В случае если лимит превышен, будет выброшено исключение
-            print('Limit of request fer hour is %s exceed ' % (str(e.count)))
+            gen_log.warning('%s limits of request per hour is  exceed ' % (str(e.count)))
             raise provider.get_exceed_response(e)
 
         # Делаем асинхронный неблокирующий запрос к провайдеру, на получение данных

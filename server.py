@@ -10,6 +10,7 @@ from roxy.handlers import *
 from roxy.provider import ApiProviderList
 from roxy.counter.redis_counter import RedisCounter
 from tornado.options import define, options
+from tornado.log import gen_log
 from gredis.client import AsyncRedis
 
 define('config', help="config file path", type=str)
@@ -36,7 +37,7 @@ class RoxyApplicationServer(tornado.web.Application):
                           .add_items_from_dict(providers_config['providers'])
 
         tornado.web.Application.__init__(self, handlers, **settings)
-        print('Server is started!')
+        gen_log.info('Server is started!')
 
     @staticmethod
     def load_config_from_file(filename):
@@ -53,7 +54,7 @@ def main():
     try:
         config = RoxyApplicationServer.load_config_from_file(options.config)
     except BaseException as e:
-        print(str(e))
+        gen_log.error(str(e))
         exit(2)
 
     redis_client = AsyncRedis(options.redis_host, options.redis_port)
