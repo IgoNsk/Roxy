@@ -5,6 +5,7 @@ import tornado.ioloop
 import tornado.options
 import tornado.web
 import tornado.autoreload
+import reyaml
 from roxy.handlers import *
 from roxy.provider import ApiProviderList
 from roxy.counter.redis_counter import RedisCounter
@@ -16,37 +17,39 @@ define('redis_host', default='photo-all-in-one', help='hostname of redis storage
 define('redis_port', default='6379', help='port of redis storage', type=int)
 
 keys = {
-    'dgis': {
-        'host': 'catalog.api.2gis.ru',
-        'name': 'Web API 2GIS',
-        'protocol': 'http',
-        'params': {
-            'keyParams': {
-                'key': 'ruaenm7219',
-            },
-        },
-        'keys': {
-            'photo': {
-                'name': 'Photo API 2GIS key',
-                'limits': {
-                    'type': 'interval',
-                    'value': {
-                        'interval': 'minute',
-                        'limit': 20
-                    },
+    "providers": {
+        "dgis": {
+            "host": "catalog.api.2gis.ru",
+            "name": "Web API 2GIS",
+            "protocol": "http",
+            "params": {
+                "keyParams": {
+                    "key": "ruaenm7219"
                 }
             },
-            'embassy': {
-                'name': 'Embassy app 2GIS key',
-                'limits': {
-                    'type': 'interval',
-                    'value': {
-                        'interval': 'minute',
-                        'limit': 5
-                    },
+            "keys": {
+                "photo": {
+                    "name": "Photo API 2GIS key",
+                    "limits": {
+                        "type": "interval",
+                        "value": {
+                            "interval": "minute",
+                            "limit": 20
+                        }
+                    }
+                },
+                "embassy": {
+                    "name": "Embassy app 2GIS key",
+                    "limits": {
+                        "type": "interval",
+                        "value": {
+                            "interval": "minute",
+                            "limit": 5
+                        }
+                    }
                 }
-            },
-        },
+            }
+        }
     }
 }
 

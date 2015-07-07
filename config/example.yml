@@ -1,0 +1,24 @@
+---
+providers:
+  dgis:
+    host: catalog.api.2gis.ru
+    name: Web API 2GIS
+    protocol: http
+    params:
+      keyParams:
+        key: ruaenm7219
+    keys:
+      photo:
+        name: Photo API 2GIS key
+        limits:
+          type: interval
+          value:
+            interval: minute
+            limit: 20
+      embassy:
+        name: Embassy app 2GIS key
+        limits:
+          type: interval
+          value:
+            interval: minute
+            limit: 5

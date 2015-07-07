@@ -1,5 +1,3 @@
-# coding: UTF-8
-
 import tornado.web
 import tornado.httpclient
 from tornado import gen

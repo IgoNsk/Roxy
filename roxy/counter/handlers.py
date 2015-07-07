@@ -1,4 +1,3 @@
-# coding: UTF-8
 from datetime import datetime
 
 
@@ -8,7 +7,7 @@ class IntervalCounterHandler:
 
     def __init__(self, period, prefix=None):
         if period not in self.PERIODS:
-            raise NotImplementedError("Неизвестный интервал %" % period)
+            raise NotImplementedError("Неизвестный интервал %s" % period)
 
         self.period = period
         self.prefix = prefix
