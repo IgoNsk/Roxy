@@ -1,4 +1,4 @@
 certifi
 gredis==0.0.7
 tornado==4.2
-reyaml==0.2
+PyYAML==3.11

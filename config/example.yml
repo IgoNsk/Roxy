@@ -1,4 +1,5 @@
 ---
+name: Roxy Island
 providers:
   dgis:
     host: catalog.api.2gis.ru

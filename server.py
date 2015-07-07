@@ -5,7 +5,7 @@ import tornado.ioloop
 import tornado.options
 import tornado.web
 import tornado.autoreload
-import reyaml
+import yaml
 from roxy.handlers import *
 from roxy.provider import ApiProviderList
 from roxy.counter.redis_counter import RedisCounter
@@ -16,44 +16,6 @@ define('port', default=8888, help="run on given port", type=int)
 define('redis_host', default='photo-all-in-one', help='hostname of redis storage', type=str)
 define('redis_port', default='6379', help='port of redis storage', type=int)
 
-keys = {
-    "providers": {
-        "dgis": {
-            "host": "catalog.api.2gis.ru",
-            "name": "Web API 2GIS",
-            "protocol": "http",
-            "params": {
-                "keyParams": {
-                    "key": "ruaenm7219"
-                }
-            },
-            "keys": {
-                "photo": {
-                    "name": "Photo API 2GIS key",
-                    "limits": {
-                        "type": "interval",
-                        "value": {
-                            "interval": "minute",
-                            "limit": 20
-                        }
-                    }
-                },
-                "embassy": {
-                    "name": "Embassy app 2GIS key",
-                    "limits": {
-                        "type": "interval",
-                        "value": {
-                            "interval": "minute",
-                            "limit": 5
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-
 class RoxyApplicationServer(tornado.web.Application):
 
     def __init__(self, providers_config, counter):
@@ -62,7 +24,7 @@ class RoxyApplicationServer(tornado.web.Application):
         ]
 
         settings = dict(
-            app_name=u"pRoxy Island",
+            app_name=providers_config['name'],
             static_path=os.path.join(os.path.dirname(__file__), "static"),
         )
 
@@ -70,17 +32,23 @@ class RoxyApplicationServer(tornado.web.Application):
         # переданного в веб сервер конфига словаря с настройками
         self.provider_list = ApiProviderList()
         self.provider_list.set_counter_storage(counter)\
-                          .add_items_from_dict(providers_config)
+                          .add_items_from_dict(providers_config['providers'])
 
         tornado.web.Application.__init__(self, handlers, **settings)
         print('Server is started!')
 
+    @staticmethod
+    def load_config_from_file(filename):
+        with open(filename, 'r') as stream:
+            return yaml.load(stream)
 
 def main():
     tornado.options.parse_command_line()
 
+    config = RoxyApplicationServer.load_config_from_file('config/example.yml')
+
     redis_client = AsyncRedis(options.redis_host, options.redis_port)
-    roxy_app = RoxyApplicationServer(keys, RedisCounter(redis_client))
+    roxy_app = RoxyApplicationServer(config, RedisCounter(redis_client))
 
     http_server = tornado.httpserver.HTTPServer(roxy_app)
     http_server.listen(options.port)
