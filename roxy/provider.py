@@ -8,6 +8,9 @@ class ApiKeyRequestExceed(BaseException):
         super().__init__(*args, **kwargs)
         self.count = count
 
+    def __str__(self):
+        return "Limit of count is exceed: %i" % self.count
+
 
 class ApiKeyUndefined(BaseException):
     pass
@@ -115,8 +118,7 @@ class ApiProvider:
     @staticmethod
     def get_exceed_response(exception):
         """Метод возвращающий ответ пользователю в случае превышения лимита по обращениям"""
-        import tornado.web
-        return tornado.web.HTTPError(405, str(exception))
+        return 405, str(exception), []
 
 
 class ApiProviderKey:
@@ -125,7 +127,7 @@ class ApiProviderKey:
     def __init__(self, name, counter_storage, limits=None, key_prefix=None):
         self.name = name
         self._counter_storage = counter_storage
-        self._limit_handler, self._limit_value = self.parse_limits(limits, key_prefix)
+        self._limit_handler, self.limit = self.parse_limits(limits, key_prefix)
 
     @staticmethod
     def parse_limits(limits, prefix=None):
@@ -147,16 +149,14 @@ class ApiProviderKey:
         return value
 
     def inc(self):
-        key = self._limit_handler.get_cur_key()
-
+        value = 1
         try:
-            value = self._counter_storage.get_count(key)
-            if value >= self._limit_value:
-                raise ApiKeyRequestExceed(value)
+            key = self._limit_handler.get_cur_key()
+            value = self._counter_storage.increment_by_key(key)
         except KeyError:
-            self._counter_storage.add_key(key)
+            self._counter_storage.add_key(key, value)
 
-        self._counter_storage.increment_by_key(key)
+        return value
 
 
 class MethodProcessor:
@@ -176,8 +176,8 @@ class GETMethodProcessor(MethodProcessor):
 
     @staticmethod
     def make_response(response, provider):
-        headers = ((name, val) for name, val in response.headers.items()
-                   if name not in GETMethodProcessor.not_accept_headers)
+        headers = [(name, val) for name, val in response.headers.items()
+                   if name not in GETMethodProcessor.not_accept_headers]
         return response.code, response.body, headers
 
     @staticmethod

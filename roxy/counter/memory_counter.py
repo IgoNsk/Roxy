@@ -8,7 +8,7 @@ class MemoryCounter(AbstractCounter):
 
     def increment_by_key(self, key, value=1):
         self._counters[key] += value
-        return self
+        return self._counters[key]
 
     def get_count(self, key):
         return self._counters[key]

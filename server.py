@@ -15,7 +15,7 @@ from gredis.client import AsyncRedis
 
 define('config', help="config file path", type=str)
 define('port', default=8888, help="run on given port", type=int)
-define('redis_host', default='photo-all-in-one', help='hostname of redis storage', type=str)
+define('redis_host', default='localhost', help='hostname of redis storage', type=str)
 define('redis_port', default='6379', help='port of redis storage', type=int)
 
 class RoxyApplicationServer(tornado.web.Application):
