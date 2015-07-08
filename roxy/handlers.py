@@ -10,7 +10,6 @@ class ProxyHandler(tornado.web.RequestHandler):
     @tornado.gen.coroutine
     def get(self, *args, **kwargs):
         """Обработка GET запросов"""
-
         providers = self.application.provider_list
 
         # Определение провайдера и ключа по доменному имени
@@ -49,14 +48,18 @@ class ProxyHandler(tornado.web.RequestHandler):
         self._render_answer(status_code, body, headers, key)
 
     def set_headers(self, headers):
+        """Устанавливаем HTTP заголовки скопом"""
         for (name, val) in headers:
             self.set_header(name, val)
 
-    def _get_limit_headers(self, key, headers=list()):
+    @staticmethod
+    def _get_limit_headers(key, headers=list()):
+        """Установка заголовком со значениями лимитов по ключю"""
         headers.extend([('X-Roxy-Limit-Used', key.get_limits()), ('X-Roxy-Limit-Total', key.limit)])
         return headers
 
     def _render_answer(self, status_code, body, headers, key):
+        """Рендеринг ответа пользователю"""
         headers = self._get_limit_headers(key, headers)
 
         self.clear()

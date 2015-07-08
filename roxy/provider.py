@@ -3,7 +3,9 @@ from roxy.counter.interface import AbstractCounter
 from roxy.counter.handlers import *
 
 
-class ApiKeyRequestExceed(BaseException):
+class ApiKeyRequestExceed(Exception):
+    """Исключение бросаемое когда превышен лимит запросов по ключю"""
+
     def __init__(self, count, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.count = count
@@ -12,7 +14,8 @@ class ApiKeyRequestExceed(BaseException):
         return "Limit of count is exceed: %i" % self.count
 
 
-class ApiKeyUndefined(BaseException):
+class ApiKeyUndefined(Exception):
+    """Исключение бросаемое когда заправшиваемый ключ не найден"""
     pass
 
 
@@ -25,8 +28,7 @@ class ApiProviderList:
         self._counter_storage = None
 
     def add_items_from_dict(self, items):
-        """Инициализация компонентов"""
-
+        """Добавление обхектов провайдеров и ключей на основе справочника словаря"""
         if not self._counter_storage:
             raise RuntimeError('Не определен компонент для хранения счетчиков обращений по ключю')
 
@@ -61,6 +63,7 @@ class ApiProviderList:
         return provider, key
 
     def set_counter_storage(self, storage_class):
+        """Установка класса хранилища счетчиков для всех ключей"""
         if not isinstance(storage_class, AbstractCounter):
             raise NotImplementedError
 
@@ -70,8 +73,8 @@ class ApiProviderList:
 
     @staticmethod
     def _parse_domain(domain=""):
+        """Получение из доменного имени провайдера и ключа"""
         parts = domain.split('.', 3)
-
         if len(parts) < 2:
             raise ApiKeyUndefined('Переданый домен неправильного формата')
 
@@ -93,16 +96,19 @@ class ApiProvider:
         self.add_request_processor(GETMethodProcessor(), 'GET')
 
     def add_key(self, name, key):
+        """Добавить ключ"""
         self._keys[name] = key
         return self
 
     def get_key(self, name):
+        """Получить ключ по имени"""
         if name not in self._keys:
             raise ApiKeyUndefined
 
         return self._keys[name]
 
     def add_request_processor(self, handler, method):
+        """Привязать обработчик запросов для данного провайдера"""
         if not isinstance(handler, MethodProcessor):
             raise RuntimeError()
 
@@ -110,9 +116,11 @@ class ApiProvider:
         return self
 
     def make_response(self, method, response):
+        """Подготовить данные для ответа пользователю"""
         return self._request_processors[method].make_response(response, self)
 
     def make_request(self, method, request):
+        """Подготовить данные для запроса к внешнему API"""
         return self._request_processors[method].make_request(request, self)
 
     @staticmethod
@@ -131,6 +139,7 @@ class ApiProviderKey:
 
     @staticmethod
     def parse_limits(limits, prefix=None):
+        """Фабричный метод создающий обработчик для генерации ключа счетчика"""
         limit_type = limits['type']
         if limit_type == 'interval':
             handler = IntervalCounterHandler(limits['value']['interval'], prefix)
@@ -139,6 +148,7 @@ class ApiProviderKey:
         raise NotImplementedError("Попытка инициации обработчика счетчика неизвестного типа %s" % limit_type)
 
     def get_limits(self):
+        """Получить кол-во запросов сделанных по ключю в данный момент времени"""
         value = 0
         try:
             key = self._limit_handler.get_cur_key()
@@ -149,9 +159,10 @@ class ApiProviderKey:
         return value
 
     def inc(self):
+        """Увеличить на один кол-во запросов сделанных по ключю"""
+        key = self._limit_handler.get_cur_key()
         value = 1
         try:
-            key = self._limit_handler.get_cur_key()
             value = self._counter_storage.increment_by_key(key)
         except KeyError:
             self._counter_storage.add_key(key, value)
@@ -160,6 +171,7 @@ class ApiProviderKey:
 
 
 class MethodProcessor:
+    """Класс для обработки запросов и ответов к внешнему API"""
 
     @staticmethod
     def make_response(response, provider):
@@ -171,6 +183,7 @@ class MethodProcessor:
 
 
 class GETMethodProcessor(MethodProcessor):
+    """Класс для обработки GET запросов и ответов к внешнему API"""
 
     not_accept_headers = ['Transfer-Encoding']
 

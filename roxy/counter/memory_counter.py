@@ -2,6 +2,7 @@ from roxy.counter.interface import AbstractCounter
 
 
 class MemoryCounter(AbstractCounter):
+    """Класс хранения в памяти значений счетчиков лимитов"""
 
     def __init__(self):
         self._counters = {}

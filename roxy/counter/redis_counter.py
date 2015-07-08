@@ -2,11 +2,13 @@ from roxy.counter.interface import AbstractCounter
 
 
 class RedisCounter(AbstractCounter):
+    """Класс хранения в REDIS значений счетчиков лимитов"""
 
     def __init__(self, redis_client):
         self.redis_client = redis_client.to_blocking_client()
 
     def __parse_val(self, val):
+        """Преобразование возвращаемого значения из REDIS в число"""
         if val is None:
             raise KeyError()
 

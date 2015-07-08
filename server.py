@@ -16,7 +16,9 @@ from gredis.client import AsyncRedis
 define('config', help="config file path", type=str)
 define('port', default=8888, help="run on given port", type=int)
 define('redis_host', default='localhost', help='hostname of redis storage', type=str)
-define('redis_port', default='6379', help='port of redis storage', type=int)
+define('redis_port', default=6379, help='port of redis storage', type=int)
+define('debug', default=False, help='debug mode', type=bool)
+
 
 class RoxyApplicationServer(tornado.web.Application):
 
@@ -47,6 +49,7 @@ class RoxyApplicationServer(tornado.web.Application):
         with open(filename, 'r') as stream:
             return yaml.load(stream)
 
+
 def main():
     tornado.options.parse_command_line()
 
@@ -63,7 +66,10 @@ def main():
     http_server = tornado.httpserver.HTTPServer(roxy_app)
     http_server.listen(options.port)
     instance = tornado.ioloop.IOLoop.instance()
-    tornado.autoreload.start(instance)
+
+    if options.debug:
+        tornado.autoreload.start(instance)
+
     instance.start()
 
 if __name__ == '__main__':
